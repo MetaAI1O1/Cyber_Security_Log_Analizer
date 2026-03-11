@@ -8,9 +8,9 @@ def normalize_logs():
     Normalize logs and generate two analysis strategy files.
     """
     
-    # 尋找目錄下所有的 csv 檔案
-    # Find all CSV files in the current directory
-    csv_files = glob.glob('*.csv')
+    # 尋找 RAW_DATA 目錄下所有的 csv 檔案
+    # Find all CSV files in the 'RAW_DATA' directory
+    csv_files = glob.glob('RAW_DATA/*.csv')
     
     # 定義輸出檔名
     # Define output filenames
@@ -31,7 +31,9 @@ def normalize_logs():
     
     for file in csv_files:
         df = pd.read_csv(file)
-        source_name = os.path.splitext(file)[0]
+        # 從路徑中擷取檔名作為來源標籤
+        # Extract filename from path as source label
+        source_name = os.path.splitext(os.path.basename(file))[0]
         
         # 加入來源標籤
         # Add source label

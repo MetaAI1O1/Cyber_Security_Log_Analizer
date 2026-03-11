@@ -33,8 +33,8 @@ This project provides a Python script to normalize system logs based on differen
 - pandas (`pip install pandas`)
 
 ## 使用方法 / Usage
-1. 將 `normalize_logs.py` 放在日誌目錄下。
-   Place `normalize_logs.py` in the logs directory.
+1. 將原始 CSV 日誌檔案放入 `RAW_DATA/` 目錄中。
+   Place raw CSV log files in the `RAW_DATA/` directory.
 2. 執行 / Run: `python normalize_logs.py`
 3. 獲取結果檔 / Get output files.
 
