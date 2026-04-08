@@ -14,8 +14,10 @@ def normalize_logs():
     
     # 定義輸出檔名
     # Define output filenames
-    output_timeline = 'strategy_timeline.csv'
-    output_user_activity = 'strategy_user_activity.csv'
+    if not os.path.exists('result'):
+        os.makedirs('result')
+    output_timeline = 'result/strategy_timeline.csv'
+    output_user_activity = 'result/strategy_user_activity.csv'
     
     # 排除可能已經產生的結果檔案
     # Exclude output files if they already exist in the directory
