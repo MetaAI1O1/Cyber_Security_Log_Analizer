@@ -96,20 +96,74 @@ def analyze_outbound_traffic():
         print(f"  - Error: {e}")
 
 def analyze_sensitive_file_access():
-    print("Analyzing Sensitive File Access...")
+    print("Analyzing Sensitive File Access (Enhanced)...")
     try:
+        # Load the raw file logs
         df = pd.read_csv('RAW_DATA/file_logs.csv')
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        # 1. Filter based on sensitivity label or high-value file extensions
+        # Monitoring .db (databases), .sql (backups), .zip/.tar (exfiltration staging), 
+        # and .txt/.xlsx (confidential documents)
+        sensitive_ext = ('.db', '.tar', '.zip', '.sql', '.txt', '.xlsx', '.bak')
+        is_sensitive = (df['sensitivity'].isin(['high', 'medium'])) | \
+                       (df['filename'].str.endswith(sensitive_ext, na=False))
         
-        # Filter high/medium sensitivity or sensitive extensions
-        sensitive_files = df[
-            (df['sensitivity'].isin(['high', 'medium'])) |
-            (df['filename'].str.endswith(('.db', '.tar', '.zip', '.sql'), na=False))
+        sensitive_df = df[is_sensitive].copy()
+
+        # 2. Identify access during off-hours (10 PM to 6 AM)
+        # Attacks or insider data theft often occur during these hours to avoid detection
+        sensitive_df['is_after_hours'] = sensitive_df['timestamp'].dt.hour.isin([22, 23, 0, 1, 2, 3, 4, 5])
+
+        # 3. Identify high-risk actions
+        # 'compress' often precedes exfiltration; 'delete' may indicate cleanup or ransomware
+        high_risk_actions = ['compress', 'delete', 'modify']
+        sensitive_df['is_high_risk_action'] = sensitive_df['action'].isin(high_risk_actions)
+
+        # 4. Implement Risk Scoring System
+        # Base score starts at 10.
+        sensitive_df['risk_score'] = 10 
+        # Increase score based on behavioral triggers
+        sensitive_df.loc[sensitive_df['is_high_risk_action'], 'risk_score'] += 20
+        sensitive_df.loc[sensitive_df['is_after_hours'], 'risk_score'] += 30
+        sensitive_df.loc[sensitive_df['sensitivity'] == 'high', 'risk_score'] += 40
+
+        # Sort results by Risk Score (descending)
+        sensitive_df = sensitive_df.sort_values(by='risk_score', ascending=False)
+
+        # Save the full refined analysis
+        sensitive_df.to_csv('result/sensitive_file_access.csv', index=False)
+        
+        # --- SECONDARY PROCESSING (Summary Reports) ---
+        
+        # 1. Generate "Critical Alerts" (Only Score >= 70 and essential columns)
+        # This reduces columns from ~10 down to the most important 5
+        critical_alerts = sensitive_df[sensitive_df['risk_score'] >= 70][
+            ['timestamp', 'user', 'filename', 'action', 'risk_score']
         ]
+        critical_alerts.to_csv('result/critical_file_alerts.csv', index=False)
+
+        # 2. Generate "Top Risky Users" (Aggregate by user)
+        # This tells you WHO to investigate first
+        user_summary = sensitive_df.groupby('user').agg({
+            'risk_score': ['count', 'sum', 'max'],
+            'is_high_risk_action': 'sum'
+        }).reset_index()
         
-        sensitive_files.to_csv('result/sensitive_file_access.csv', index=False)
-        print(f"  - Found {len(sensitive_files)} sensitive file access records.")
+        # Flatten columns and rename for clarity
+        user_summary.columns = ['user', 'event_count', 'total_risk_score', 'max_single_score', 'high_risk_actions_count']
+        user_summary = user_summary.sort_values(by='total_risk_score', ascending=False).head(10)
+        
+        user_summary.to_csv('result/top_risky_users_summary.csv', index=False)
+
+        # Count and display summary of high-risk findings
+        critical_count = len(critical_alerts)
+        print(f"  - Analyzed {len(sensitive_df)} records.")
+        print(f"  - Generated 'critical_file_alerts.csv' with {critical_count} major events.")
+        print(f"  - Generated 'top_risky_users_summary.csv' for the top 10 suspect users.")
+        
     except Exception as e:
-        print(f"  - Error: {e}")
+        print(f"  - Error in Enhanced Analysis: {e}")
 
 def analyze_process_behavior():
     print("Analyzing Process Behavior Mapping...")
